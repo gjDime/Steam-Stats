@@ -1,0 +1,1 @@
+.NET web application that demonstrates user authentication and third-party API integration. The application allows users to create an account, log in, and curate a personalized list of favorite games. Game information is dynamically fetched from the Steam API, providing users with up-to-date details about each title they add to their collection.
