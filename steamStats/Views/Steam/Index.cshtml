@@ -1,0 +1,242 @@
+﻿@model IEnumerable<steamStats.Models.GameViewModel>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-center">Most Played Steam Games</h2>
+
+    <table class="table table-hover table-striped" id="tabela">
+        <thead class="thead-dark">
+            <tr>
+                <th>#</th>
+                <th>Image</th>
+                <th>@Html.DisplayNameFor(model => model.First().Game.Name)</th>
+                <th>@Html.DisplayName("Price (USD)")</th>
+                <th>@Html.DisplayName("Current Players")</th>
+                <th>@Html.DisplayName("Steam ID")</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var game in Model)
+            {
+                <tr>
+                    <td></td>
+                    <td>
+                        <img src="@game.Game.imageUrl" alt="@game.Game.Name" class="img-fluid" style="width: 150px;" />
+                    </td>
+                    <td>
+                        <a href="https://store.steampowered.com/app/@game.Game.Id" target="_blank" class="text-dark">@game.Game.Name</a>
+                    </td>
+                    <td data-order="@game.Game.price">
+                        @if (game.Game.price != 0)
+                        {
+                            <span class="badge badge-success">$@game.Game.price</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-warning">FTP</span>
+                        }
+                    </td>
+                    <td>@Html.DisplayFor(model => game.Game.playerCount)</td>
+                    <td>@Html.DisplayFor(model => game.Game.Id)</td>
+                    <td>
+                        <div class="d-grid gap-2">
+                            <button game-id="@game.Game.Id" type="button" class="btn btn-danger btn-sm d-flex align-items-center justify-content-center js-delete">
+                                <i class="fas fa-times-circle"></i> <span class="ml-2">Delete</span>
+                            </button>
+                            @*<button game-id="@game.Id" type="button" class="btn btn-primary btn-sm d-flex align-items-center justify-content-center js-add-favorites">
+
+                                </button>*@
+                        <button game-id="@game.Game.Id" type="button" class="btn btn-primary btn-sm d-flex align-items-center justify-content-center js-add-favorites"
+                                @(User.Identity.IsAuthenticated ? "" : "disabled") @(game.IsFavorite ? "disabled" : "")>
+                            @if (game.IsFavorite)
+                            {
+                                <i class="fas fa-check-circle" style="padding-right: 8px;"></i><span>Added</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-plus-circle" style="padding-right: 8px;"></i><span>Add to favourites</span>
+                            }
+
+                        </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        @using (Html.BeginForm("Update", "Steam", new { role = "form" }))
+        {
+            <p>
+                <button type="submit" class="btn btn-primary" @(ViewBag.disableButton ? "disabled" : "" )>Update</button>
+            </p>
+            <strong>Last updated:</strong> @ViewBag.LastUpdate
+        }
+        <hr />
+    </div>
+</div>
+
+@section scripts{
+    <script>
+        $(document).ready(function () {
+            
+            var table = $("#tabela").DataTable({
+                columnDefs: [
+                    {
+                        targets: [0, 1, 5, 6], 
+                        orderable: false 
+                    },
+                    {
+                        targets: 3,
+                        type: 'num'
+                    }
+                ],
+                order: [[4, 'desc']], 
+                rowCallback: function (row, data, index) {
+                    var info = this.api().page.info();
+                    var pageNum = info.page;
+                    var pageLength = info.length;
+                    var index = (pageNum * pageLength) + (index + 1);
+                    $('td:eq(0)', row).html(index);
+                }
+            });
+
+            
+            $(document).on("click", ".js-delete", function () {
+                var button = $(this);
+                var row = button.closest('tr'); 
+                if (confirm("Are you sure you want to delete this game?")) {
+                    $.ajax({
+                        url: "/steam/Delete/" + button.attr("game-id"),
+                        method: "POST",
+                        dataType: "json",
+                        success: function (response) {
+                            if (response.success) {
+                                table.row(row).remove().draw(false);
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            alert("Error: " + xhr.responseText + "\nStatus: " + status + "\nError: " + error);
+                        }
+                    });
+                }
+            });
+
+
+            $(document).on("click", ".js-add-favorites", function () {
+                var button = $(this);
+                var gameId = button.attr("game-id"); 
+
+
+                $.ajax({
+                    url: "/steam/AddToFavourites/"+gameId, 
+                    method: "POST",
+                    dataType: "json",
+                    success: function (response) {
+                        if (response.success) {
+                            button.prop("disabled", true);
+                            button.html('<i class="fas fa-check-circle" style="padding-right: 8px;"></i> Added'); 
+                        } else {
+                            alert(response.message); 
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("Error: " + xhr.responseText + "\nStatus: " + status + "\nError: " + error);
+                    }
+                });
+            });
+
+        });
+
+    </script>
+}
+
+<style>
+    /* Ensure the header text stays on one line */
+    #tabela thead th {
+        background-color: #343a40; /* Dark grey background */
+        color: white; /* White text */
+        padding: 10px; /* Padding for a better look */
+        border-bottom: 2px solid #212529; /* Slightly darker border */
+        white-space: nowrap; /* Prevent text from wrapping */
+        overflow: hidden; /* Hide overflow text */
+        text-overflow: ellipsis; /* Add ellipsis if text overflows */
+    }
+
+    /* Ensure the entire table header is responsive and aligns properly */
+    #tabela {
+        width: 100%; /* Make sure table takes full width */
+        table-layout: fixed; /* Fixed table layout to handle long text */
+    }
+
+        /* Table text alignment */
+        #tabela th,
+        #tabela td {
+            text-align: left; /* Align text to the left */
+        }
+
+        /* Header styling */
+        #tabela thead th {
+            background-color: #343a40; /* Dark grey background */
+            color: white; /* White text */
+            padding: 10px; /* Padding for a better look */
+            border-bottom: 2px solid #212529; /* Slightly darker border */
+        }
+
+            
+
+           
+
+            
+
+            /* Hover effects */
+            #tabela thead th:hover {
+                background-color: #495057; /* Slightly lighter grey on hover */
+                cursor: pointer; /* Pointer cursor on hover */
+            }
+
+            /* If sorting is disabled */
+            #tabela thead th.sorting_asc_disabled,
+            #tabela thead th.sorting_desc_disabled {
+                cursor: not-allowed;
+                background-image: none; /* No icon if disabled */
+            }
+
+    /* Increase the font size of the table text */
+    #tabela {
+        font-size: 1.1rem;
+    }
+
+    .btn-danger {
+        font-size: 0.9rem; /* Adjust size if needed */
+        border-radius: 0.25rem; /* Rounded corners */
+    }
+
+        .btn-danger .fas {
+            font-size: 1.1rem; /* Adjust icon size */
+            margin-right: 0.5rem; /* Adjust the space between the icon and the text */
+        }
+
+    #tabela td:nth-child(1) {
+        font-size: 1.5em;
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+        text-decoration: underline;
+    }
+
+    #tabela th:nth-child(1),
+    #tabela td:nth-child(1) {
+        width: 5%;
+    }
+
+    #tabela th:nth-child(7),
+    #tabela td:nth-child(7) {
+        width: 14%;
+    }
+</style>

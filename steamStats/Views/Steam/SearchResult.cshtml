@@ -1,0 +1,172 @@
+﻿@model List<steamStats.Models.Game>
+@{
+    ViewBag.Title = "Search";
+}
+
+
+
+<div class="container mt-4">
+    <h2 class="mb-4">Search Results</h2>
+
+    @using (Html.BeginForm("SearchResult", "Steam", FormMethod.Post, new { @class = "form-inline mb-4" }))
+    {
+        <div class="input-group">
+            @Html.TextBox("keyword", null, new { @class = "form-control", placeholder = "Enter game name" })
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"> Search</i>
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (Model.Any())
+    {
+        <ul class="list-group">
+            @foreach (var game in Model)
+            {
+                <li class="list-group-item mb-3">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <img src="@game.imageUrl" alt="@game.Name" class="img-fluid rounded" />
+                        </div>
+                        <div class="col-md-5">
+                            <h5>
+                                <a href="https://store.steampowered.com/app/@game.Id" target="_blank">
+                                    @game.Name
+                                </a>
+                            </h5>
+                            <p class="mb-1">
+                                Price: @(game.price != 0 ? $"${game.price}" : "FTP")
+                            </p>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center justify-content-between">
+                            <div class="col-6 pr-2">
+                                <button id="btn1" game-id="@game.Id" type="button" class="btn btn-success js-add w-100 same-size">
+                                    <i class="fas fa-plus-circle"></i> Add to List
+                                </button>
+                            </div>
+                            <div class="col-6 pl-1">
+                                <button id="btn2" game-id-fav="@game.Id" type="button" class="btn btn-primary btn-sm js-add-favorites custom-width same-size"
+                                        @(User.Identity.IsAuthenticated ? "" : "disabled")>
+                                    <i class="fas fa-plus-circle"></i><span class="ml-2">Add to Favourites</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No games found.</p>
+        <img src="https://static-00.iconduck.com/assets.00/disappointed-but-relieved-face-emoji-256x256-fbosomlf.png" alt="Sad but relieved face emoji&quot; Emoji - Download for free – Iconduck" />
+
+    }
+</div>
+
+@section scripts{
+    <script>
+        $(document).ready(function () {
+            $(".js-add").on("click", function () {
+                var button = $(this);
+                $.ajax({
+                    url: "/steam/AddToDatabase/" + button.attr("game-id"),
+                    method: "POST",
+                    dataType: "json",
+                    success: function (response) {
+                        if (response.success) {
+                            button.text("Added"); // Update button text
+                            button.prop("disabled", true); // Disable button to prevent re-click
+                            alert(response.message); // Display success message from server
+                        } else {
+                            button.text("Already Added"); // Update button text
+                            button.prop("disabled", true); // Disable button to prevent re-
+                            alert(response.message); // Display error message from server
+                        }
+                    },
+                    error: function () {
+                        alert("There was an error processing your request.");
+                    }
+                });
+            });
+
+            $(".js-add-favorites").on("click", function () {
+                var button = $(this);
+                $.ajax({
+                    url: "/steam/AddToFavourites/" + button.attr("game-id-fav"), // Your endpoint for adding to favorites
+                    method: "POST",
+                    dataType: "json",
+                    success: function (response) {
+                        if (response.success) {
+                            button.prop("disabled", true); // Optionally disable the button after adding
+                            button.html('<i class="fas fa-check-circle" style="padding-right: 8px;"></i> Added'); // Change button text on success
+                        } else {
+                            alert(response.message); // Show any error message from the server
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("Error: " + xhr.responseText + "\nStatus: " + status + "\nError: " + error);
+                    }
+                });
+            });
+        });
+    </script>
+}
+
+<style>
+    li a {
+        font-size: 1.3em;
+        font-weight: bold;
+    }
+
+    li p {
+        font-size: 1.2em;
+    }
+
+    #btn2 {
+        min-width: 170px;
+    }
+
+    .same-size {
+        height: 50px; /* Set a fixed height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .w-100 {
+        width: 100%;
+    }
+
+    /* Ensures the buttons span the full width of their columns */
+    .custom-width {
+        width: 110%; /* Adjust the width as needed */
+        max-width: 150px; /* Optional: set a max-width to avoid it being too wide */
+    }
+
+    /* Optional: Adds space between the icon and text */
+    #btn1 i {
+        margin-right: 5px;
+    }
+    #btn2 i {
+        margin-right: 0px;
+    }
+    #btn2{
+        font-size: 1.025em;
+    }
+    #btn1{
+        font-size: 1.1em;
+    }
+
+    /* Optional: Adjust hover states */
+    .btn-success:hover {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-primary:hover {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+</style>

@@ -1,0 +1,167 @@
+﻿@model steamStats.Models.ApplicationUser
+@{
+    ViewBag.Title = "userList";
+}
+
+
+@if (!Model.userGames.Any())
+{
+    <p>No games found.</p>
+    <img src="https://static-00.iconduck.com/assets.00/disappointed-but-relieved-face-emoji-256x256-fbosomlf.png" alt="Sad but relieved face emoji&quot; Emoji - Download for free – Iconduck" />
+}
+else
+{
+    <div class="container mt-4">
+        <h2 class="mb-4 text-center">Favorite Games for  @Model.UserName</h2>
+
+        <table class="table table-hover table-striped" id="TAB">
+            <thead class="thead-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Image</th>
+                    <th>@Html.DisplayNameFor(model => model.userGames.First().Name)</th>
+                    <th>@Html.DisplayName("Price (USD)")</th>
+                    <th>@Html.DisplayName("Current Players")</th>
+                    <th>@Html.DisplayName("Steam ID")</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var game in Model.userGames)
+                {
+                    <tr>
+                        <td></td>
+                        <td>
+                            <img src="@game.imageUrl" alt="@game.Name" class="img-fluid" style="width: 150px;" />
+                        </td>
+                        <td>
+                            <a href="https://store.steampowered.com/app/@game.Id" target="_blank" class="text-dark">@game.Name</a>
+                        </td>
+                        <td data-order="@game.price">
+                            @if (game.price != 0)
+                            {
+                                <span class="badge badge-success">$@game.price</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-warning">FTP</span>
+                            }
+                        </td>
+                        <td>@Html.DisplayFor(model => game.playerCount)</td>
+                        <td>@Html.DisplayFor(model => game.Id)</td>
+                        <td>
+                            <button game-id="@game.Id" type="button" class="btn btn-danger btn-sm d-flex align-items-center justify-content-center js-delete-fav">
+                                <i class="fas fa-times-circle"></i> <span class="ml-2">Delete</span>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="mt-4">
+            @using (Html.BeginForm("Update", "Steam", new { role = "form" }))
+            {
+                <p>
+                    <button type="submit" class="btn btn-primary" @(ViewBag.disableButton ? "disabled" : "" )>Update</button>
+                </p>
+                <strong>Last updated:</strong> @ViewBag.LastUpdate
+            }
+            <hr />
+        </div>
+    </div>
+}
+
+
+@section scripts{
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTable and store reference in a variable
+            var table = $("#TAB").DataTable({
+                columnDefs: [
+                    {
+                        targets: [0, 1, 5, 6], // Indices of columns to disable sorting
+                        orderable: false // Disable sorting for these columns
+                    },
+                    {
+                        targets: 3,
+                        type: 'num'
+                    }
+                ],
+                order: [[4, 'desc']], // Default sort column index 3 (Current Players), descending order
+                rowCallback: function (row, data, index) {
+                    var info = this.api().page.info();
+                    var pageNum = info.page;
+                    var pageLength = info.length;
+                    var index = (pageNum * pageLength) + (index + 1);
+                    $('td:eq(0)', row).html(index);
+                }
+            });
+
+            // Handle delete button click
+            $(document).on("click", ".js-delete-fav", function () {
+                var button = $(this);
+                var row = button.closest('tr'); // Get the closest table row
+                if (confirm("Are you sure you want to delete this game from your favorites list?")) {
+                    $.ajax({
+                        url: "/steam/UserListDelete/" + button.attr("game-id"), // Endpoint to delete game
+                        method: "POST",
+                        dataType: "json",
+                        success: function (response) {
+                            if (response.success) {
+                                table.row(row).remove().draw(false); // Remove row and redraw table without resetting paging
+                            }
+                        },
+                        error: function () {
+                            alert("There was an error processing your request.");
+                        }
+                    });
+                }
+            });
+        });
+
+    </script>
+}
+
+<style>
+    .js-delete-fav {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 5px 10px;
+        background-color: #dc3545; /* Bootstrap danger color */
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        white-space: nowrap;
+        transition: background-color 0.3s ease;
+    }
+
+    td {
+        vertical-align: bottom /* Ensures contents are vertically centered */
+    }
+
+    .js-delete-fav i {
+        margin-right: 5px;
+    }
+
+    .js-delete-fav span {
+        font-size: 14px;
+    }
+
+    #TAB {
+        font-size: 1.1rem;
+    }
+
+    
+
+    #TAB td:nth-child(1) {
+        font-size: 1.5em;
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+        text-decoration: underline;
+    }
+</style>

@@ -1,0 +1,20 @@
+﻿
+@{
+    ViewBag.Title = "Search Steam Games";
+}
+
+
+<h2 class="my-4">Search Steam Games</h2>
+
+
+@using (Html.BeginForm("SearchResult", "Steam", FormMethod.Post, new { @class = "form-inline mb-4" }))
+{
+    <div class="input-group">
+        @Html.TextBox("keyword", null, new { @class = "form-control", placeholder = "Enter game name" })
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"> Search</i>
+            </button>
+        </div>
+    </div>
+}
